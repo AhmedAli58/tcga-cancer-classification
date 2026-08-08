@@ -119,7 +119,7 @@ def fig_cross_cancer():
     for i, v in enumerate(counts.values):
         ax.text(i, v + 0.1, str(v), ha="center")
     ax.set_ylabel("number of driver genes")
-    ax.set_title("BRCA vs LUAD driver genes\n(shared vs cancer-specific)")
+    ax.set_title("Top-30 Random Forest drivers: BRCA vs LUAD\n(shared vs cancer-specific)")
     ax.tick_params(axis="x", rotation=15)
     _save(fig, "fig_cross_cancer.png")
 
