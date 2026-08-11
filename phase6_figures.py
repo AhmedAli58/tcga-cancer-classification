@@ -109,27 +109,46 @@ def fig_consensus():
 
 
 def fig_cross_cancer():
-    p = "Data/phase4_cross_cancer_gene_comparison.csv"
-    if not os.path.exists(p):
-        print("  [skip] cross-cancer - run phase4_compare.py"); return
-    df = pd.read_csv(p)
-    counts = df["category"].value_counts()
+    # Compute counts directly from the RF importance files using the SAME method
+    # as phase4b_overlap_by_threshold.py: explicit sort by importance (descending),
+    # restrict to the shared gene universe, then take top-30 per cohort.
+    TOP_N = 30
+    brca_p = "Data/TCGA_BRCA/TCGA_BRCA_rf_importances.csv"
+    luad_p = "Data/TCGA_LUAD/TCGA_LUAD_rf_importances.csv"
+    if not (os.path.exists(brca_p) and os.path.exists(luad_p)):
+        print("  [skip] cross-cancer - run phase3_train.py"); return
+
+    brca = pd.read_csv(brca_p).sort_values("importance", ascending=False).reset_index(drop=True)
+    luad = pd.read_csv(luad_p).sort_values("importance", ascending=False).reset_index(drop=True)
+
+    shared_universe = set(brca["gene"]) & set(luad["gene"])
+    brca_shared = brca[brca["gene"].isin(shared_universe)].reset_index(drop=True)
+    luad_shared = luad[luad["gene"].isin(shared_universe)].reset_index(drop=True)
+
+    brca_top = set(brca_shared.head(TOP_N)["gene"])
+    luad_top = set(luad_shared.head(TOP_N)["gene"])
+
+    n_shared = len(brca_top & luad_top)
+    n_brca_only = len(brca_top - luad_top)
+    n_luad_only = len(luad_top - brca_top)
+
+    labels = ["Shared", "BRCA-specific", "LUAD-specific"]
+    values = [n_shared, n_brca_only, n_luad_only]
+
     fig, ax = plt.subplots(figsize=(5, 4))
-    ax.bar(counts.index, counts.values, color=["#27ae60", "#2980b9", "#8e44ad"])
-    for i, v in enumerate(counts.values):
+    ax.bar(labels, values, color=["#27ae60", "#2980b9", "#8e44ad"])
+    for i, v in enumerate(values):
         ax.text(i, v + 0.1, str(v), ha="center")
-    ax.set_ylabel("number of driver genes")
-    ax.set_title("Top-30 Random Forest drivers: BRCA vs LUAD\n(shared vs cancer-specific)")
+    ax.set_ylabel("number of predictive features")
+    ax.set_title("Top-30 Random Forest predictive features: BRCA vs LUAD")
     ax.tick_params(axis="x", rotation=15)
     _save(fig, "fig_cross_cancer.png")
 
 
 def main():
     print("Generating figures ->", FIG_DIR)
+    # Only the two figures used in the final report are generated here.
     fig_performance()
-    fig_class_balance()
-    fig_top_genes()
-    fig_consensus()
     fig_cross_cancer()
     print("Done.")
 
